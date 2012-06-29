@@ -1,0 +1,96 @@
+#!/bin/bash
+
+# Author: Sabuj Pattanayek (sabujp@gmail.com)
+# Purpose: Gets remaining warranty information from dell.com for the system that this script is run on, including cpus, gpus, hostname, etc, and has a csv mode for dumping into a csv file from multiple remote machines.
+# run as root, with sudo, or /usr/sbin/dmidecode must be setuid root
+
+
+for var in "$@"
+do
+	if [[ "$var" == "--csv" ]]; then
+		csv=1
+	fi
+	if [[ "$var" == "--noheader" ]]; then
+		noHeader=1
+	fi
+done
+
+if [[ -e "/usr/sbin/dmidecode" && $USER == "root" ]]; then
+	dmidecode="/usr/sbin/dmidecode"
+else
+	dmidecode="/sb/apps/Linux/bin/dmidecode"
+fi
+serial=`$dmidecode | grep -i "Serial Number" | head -1 | awk -F' ' '{print $3}' | sed 's/[ \t]\+/ /g'`
+model=`$dmidecode | grep "Product Name" | head -1 | sed -e 's/Product Name: //' | sed 's/[ \t]\+/ /g' | sed 's/^[ \t]//'`
+mem=`cat /proc/meminfo | grep -i memtotal | sed 's/[ \t]\+/ /g' | sed 's/MemTotal: //'` 
+cpuType=`cat /proc/cpuinfo | grep -i "model name" | head -1 | sed 's/[ \t]\+/ /g' | sed 's/model name : //'`
+cpuNum=`cat /proc/cpuinfo | grep -i processor | wc -l | head -1 | sed 's/[ \t]\+/ /g'`
+cpuMHz=`cat /proc/cpuinfo | grep -i "cpu mhz" | head -1 | awk -F' ' '{print $4}' | sed 's/[ \t]\+/ /g'`
+uptime=`uptime | sed 's/[ \t]\+/ /g' | sed 's/^[ \t]//'`;
+lastPerson=`last | grep " :0" | head -1 | sed 's/[ \t]\+/ /g'`
+gpus=`cat /proc/driver/nvidia/gpus/*/information | grep Model | sed -e 's/Model: //' | sed 's/[ \t]\+/ /g' | sed 's/^[ \t]//' | tr '\n' ','`
+hostName=`hostname`
+
+print () {
+	if [[ ! $csv ]]; then
+		echo "HOSTNAME: ${hostName}"
+		echo "MODEL: ${model}"
+		echo "SERIAL NUMBER: ${serial}"
+		echo "TOTAL MEMORY: ${mem}"
+		echo "CPU TYPE: ${cpuType}"
+		echo "CPU MHZ: ${cpuMHz}"
+		echo "NUMBER OF LOGICAL CPUS: ${cpuNum}"
+		echo "GPUS: ${gpus}"
+		echo "LAST CONSOLE USER: ${lastPerson}"
+		echo "UPTIME: ${uptime}"
+		# line commented below only works with dmidecode from RHEL5 boxes
+		#serial=`/sb/apps/Linux/bin/dmidecode -s system-serial-number`
+		#daysLeft=`wget -q "http://support.euro.dell.com/support/topics/topic.aspx/emea/shared/support/my_systems_info/en/details?ServiceTag=${serial}" -O - | grep contract_table | awk -F'<td' '{print $12}' | awk -F'>' '{print $2}' | awk -F'<' '{print $1}'`
+		echo "WARRANTY REMAINING: $daysLeft"
+	else
+		if [[ ! $noHeader ]]; then
+			echo "HOSTNAME;MODEL;SERIAL;MEMORY;CPU TYPE;CPU MHZ (possibly throttled);NUM LOGICAL CPUS;GPUS;LAST CONSOLE USER;UPTIME;WARRANTY DAYS REMAINING"
+		fi
+		echo "${hostName};${model};${serial};${mem};${cpuType};${cpuMHz};${cpuNum};${gpus};${lastPerson};${uptime};${daysLeft}"
+	fi
+}
+
+# method 5
+daysLeft=`wget -q "http://www.dell.com/support/troubleshooting/us/en/04/Index?t=warranty&servicetag=${serial}" -O - | grep TopTwoWarrantyListItem | head -1 | awk -F'<b>' '{print $2}' | awk -F'[' '{print $2}' | awk -F']' '{print $1}'`
+if [[ -n $daysLeft ]]; then
+	print
+	exit
+fi
+
+
+# method 4
+daysLeft=`wget -q "http://support.dell.com/support/topics/global.aspx/support/my_systems_info/details?c=us&l=en&s=gen&ServiceTag=${serial}" -O - | grep TopTwoWarrantyListItem | head -1 | awk -F'<b>' '{print $2}' | awk -F'[' '{print $2}' | awk -F']' '{print $1}'`
+if [[ -n $daysLeft ]]; then
+	print
+	exit
+fi
+
+# method 1
+daysLeft=`wget -q "http://support.dell.com/support/topics/global.aspx/support/my_systems_info/details?c=us&l=en&s=gen&ServiceTag=${serial}" -O - | grep contract_oddrow | awk -F'<td' '{print $12}' | awk -F'>' '{print $3}' | awk -F'<' '{print $1}'`
+if [[ -n $daysLeft ]]; then
+	print
+	exit
+fi
+
+# method 2
+daysLeft=`wget -q "http://support.dell.com/support/topics/global.aspx/support/my_systems_info/details?c=us&l=en&s=gen&ServiceTag=${serial}" -O - | grep contract_oddrow | awk -F'<td' '{print $12}' | awk -F'>' '{print $2}' | awk -F'<' '{print $1}'`
+if [[ -n $daysLeft ]]; then
+	print
+	exit
+fi
+
+# method 3
+daysLeft=`wget -q "http://support.dell.com/support/topics/global.aspx/support/my_systems_info/details?c=us&l=en&s=gen&ServiceTag=${serial}" -O - | grep contract_oddrow | awk -F'<td' '{print $12}' | awk -F'>' '{print $4}' | awk -F'<' '{print $1}'`
+if [[ -n $daysLeft ]]; then
+	print
+	exit
+else
+	print
+	echo "WARRANTY REMAINING: ERROR! Exhausted all search patterns please contact Sabuj Pattanayek (sabujp@gmail.com) if you're running this on a Dell system that has a correct serial number to have this script fixed"
+fi
+
