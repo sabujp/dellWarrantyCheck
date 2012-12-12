@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# Author: Sabuj Pattanayek (sabujp@gmail.com)
-# Purpose: Gets remaining warranty information from dell.com for the system that this script is run on, including cpus, gpus, hostname, etc, and has a csv mode for dumping into a csv file from multiple remote machines.
+# Author: Sabuj Pattanayek (sabuj.pattanayek@vanderbilt.edu)
+# Purpose: Gets remaining warranty information from dell.com for the system that this script is run on.
+# Version: git
+
 # run as root, with sudo, or /usr/sbin/dmidecode must be setuid root
 
 
@@ -46,14 +48,24 @@ print () {
 		# line commented below only works with dmidecode from RHEL5 boxes
 		#serial=`/sb/apps/Linux/bin/dmidecode -s system-serial-number`
 		#daysLeft=`wget -q "http://support.euro.dell.com/support/topics/topic.aspx/emea/shared/support/my_systems_info/en/details?ServiceTag=${serial}" -O - | grep contract_table | awk -F'<td' '{print $12}' | awk -F'>' '{print $2}' | awk -F'<' '{print $1}'`
-		echo "WARRANTY REMAINING: $daysLeft"
+		#echo "WARRANTY REMAINING: $daysLeft"
+		echo "WARRANTY END DATE: $endDate"
 	else
 		if [[ ! $noHeader ]]; then
-			echo "HOSTNAME;MODEL;SERIAL;MEMORY;CPU TYPE;CPU MHZ (possibly throttled);NUM LOGICAL CPUS;GPUS;LAST CONSOLE USER;UPTIME;WARRANTY DAYS REMAINING"
+			#echo "HOSTNAME;MODEL;SERIAL;MEMORY;CPU TYPE;CPU MHZ (possibly throttled);NUM LOGICAL CPUS;GPUS;LAST CONSOLE USER;UPTIME;WARRANTY DAYS REMAINING"
+			echo "HOSTNAME;MODEL;SERIAL;MEMORY;CPU TYPE;CPU MHZ (possibly throttled);NUM LOGICAL CPUS;GPUS;LAST CONSOLE USER;UPTIME;WARRANTY END DATE"
 		fi
-		echo "${hostName};${model};${serial};${mem};${cpuType};${cpuMHz};${cpuNum};${gpus};${lastPerson};${uptime};${daysLeft}"
+		#echo "${hostName};${model};${serial};${mem};${cpuType};${cpuMHz};${cpuNum};${gpus};${lastPerson};${uptime};${daysLeft}"
+		echo "${hostName};${model};${serial};${mem};${cpuType};${cpuMHz};${cpuNum};${gpus};${lastPerson};${uptime};${endDate}"
 	fi
 }
+
+# method 6
+endDate=`wget -q http://www.dell.com/support/troubleshooting/us/en/555/Servicetag/${serial}#ui-tabs-5 -O - | grep "Warranty with an end date of" | awk -F"<b>" '{print $3}' | awk -F"</b>" '{print $1}'`
+if [[ -n $endDate ]]; then
+	print
+	exit
+fi
 
 # method 5
 daysLeft=`wget -q "http://www.dell.com/support/troubleshooting/us/en/04/Index?t=warranty&servicetag=${serial}" -O - | grep TopTwoWarrantyListItem | head -1 | awk -F'<b>' '{print $2}' | awk -F'[' '{print $2}' | awk -F']' '{print $1}'`
@@ -91,6 +103,6 @@ if [[ -n $daysLeft ]]; then
 	exit
 else
 	print
-	echo "WARRANTY REMAINING: ERROR! Exhausted all search patterns please contact Sabuj Pattanayek (sabujp@gmail.com) if you're running this on a Dell system that has a correct serial number to have this script fixed"
+	echo "WARRANTY REMAINING: ERROR! Exhausted all search patterns please contact Sabuj Pattanayek (sabuj.pattanayek@vanderbilt.edu) if you're running this on a Dell system that has a correct serial number to have this script fixed"
 fi
 
