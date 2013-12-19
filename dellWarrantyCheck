@@ -60,6 +60,13 @@ print () {
 	fi
 }
 
+# method 7
+endDate=`wget -q "http://www.dell.com/support/my-support/us/en/555/product-support/servicetag/${serial}?s=BSD" -O - | grep -i "Warranty end date" | awk -F">" '{print $2}' | awk '{print $1}' | awk -F"<" '{print $1}' | head -1`
+if [[ -n $endDate ]]; then
+	print
+	exit
+fi
+
 # method 6
 endDate=`wget -q http://www.dell.com/support/troubleshooting/us/en/555/Servicetag/${serial}#ui-tabs-5 -O - | grep "Warranty with an end date of" | awk -F"<b>" '{print $3}' | awk -F"</b>" '{print $1}'`
 if [[ -n $endDate ]]; then
