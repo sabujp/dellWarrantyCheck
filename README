@@ -1,3 +1,5 @@
 # Author: Sabuj Pattanayek (sabujp@gmail.com)
-# Purpose: Gets remaining warranty information from dell.com for the system that this script is run on, as well as other info like cpus, gpus, etc. Also has a csv mode (--csv) for dumping this information into csv format.
-# run as root, with sudo, or /usr/sbin/dmidecode must be setuid root
+# Purpose: Gets remaining warranty information from dell.com for the system
+# that this is run on. Run as root, with sudo, or dmidecode must be setuid root.# Also needs wget.
+# Flags: --csv : output in csv mode
+#        --noheader : don't output the header line for the csv
