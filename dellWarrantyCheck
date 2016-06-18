@@ -94,7 +94,8 @@ print () {
 (possibly throttled);NUM LOGICAL CPUS;GPUS;LAST CONSOLE USER;UPTIME;\
 WARRANTY DAYS REMAINING"
 		fi
-		echo "${hostName};${model};${serial};${mem};${cpuType};${cpuMHz};${cpuNum};${gpus};${lastPerson};${uptime};${daysLeft}"
+		echo "${hostName};${model};${serial};${mem};${cpuType};${cpuMHz};${cpuNum};\
+${gpus};${lastPerson};${uptime};${daysLeft}"
 	fi
 }
 
@@ -113,8 +114,12 @@ done
 if [[ ${#endDates[@]} == 0 ]]; then
 	daysLeft='?'
 else
-	# Absolute maximum negative days remaining on a warranty would be from when
-	# Dell started as a company sometime in 1984
+	# Here we determine the warranty that has the greatest number of active days
+	# remaining since a device might have multiple warranties. The least number of
+	# days remaining on a warranty would be from when Dell started as a company
+	# sometime in 1984. However, not sure if it's possible for a software warranty
+	# to still be active but the hardware warranty to not be, but here we assume
+	# this can't happen (since we mainly care about the hardware warranties here).
 	daysLeft=$(days_remaining "Jan 1 1984")
 	for endDate in ${endDates[@]}; do
 		tmpDaysLeft=$(days_remaining $endDate)
